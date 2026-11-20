@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# Model cache weights (heavy files)
+model_cache/
+
+# Generated outputs
+data/outputs/*
+!data/outputs/.gitkeep
+
+# OS generated
+.DS_Store
+Thumbs.db

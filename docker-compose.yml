@@ -1,0 +1,20 @@
+services:
+  eval-docente-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eval_docente_api
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=API Evaluacion Docente & NLP
+      - DEFAULT_MODEL_NAME=pysentimiento/robertuito-sentiment-analysis
+      - CONFIDENCE_THRESHOLD=0.45
+      - BATCH_SIZE=32
+      - MODEL_CACHE_DIR=/app/model_cache
+    volumes:
+      # Persistencia de los pesos del modelo para no re-descargar al reiniciar
+      - ./model_cache:/app/model_cache
+      # Persistencia de datos de entrada/salida
+      - ./data:/app/data
+    restart: unless-stopped
