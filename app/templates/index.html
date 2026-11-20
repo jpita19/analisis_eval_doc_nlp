@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Evaluación Docente - Análisis NLP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+    .loading-pulse { animation: pulse-subtle 1.5s infinite; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans flex flex-col">
+
+  <!-- Header Institucional -->
+  <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 text-2xl shadow-inner">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Evaluación Docente Institucional</h1>
+          <p class="text-blue-200 text-sm">Clasificación Automática de Opiniones con Procesamiento de Lenguaje Natural (NLP)</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          Modelo Activo
+        </span>
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-slate-200 border border-white/10">
+          Filtro: PLANTA-OCASIONAL
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-6xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+    
+    <!-- Banner de Información y Descarga de Muestra -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-file-invoice text-blue-600"></i>
+          Subida y Procesamiento de Evaluaciones
+        </h2>
+        <p class="text-sm text-slate-600">
+          Sube tu archivo <strong class="text-slate-800">.xlsx</strong> o <strong class="text-slate-800">.csv</strong>. El sistema clasifica las observaciones en <span class="text-emerald-700 font-medium">Positivas</span>, <span class="text-amber-700 font-medium">Por mejorar</span> y <span class="text-slate-600 font-medium">Ninguna</span>, generando el consolidado institucional.
+        </p>
+      </div>
+      <a href="/api/v1/evaluation/sample-file" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-medium text-sm transition-all shadow-sm">
+        <i class="fa-solid fa-download text-blue-500"></i>
+        <span>Descargar Archivo de Prueba (.xlsx)</span>
+      </a>
+    </section>
+
+    <!-- Zona de Carga Drag & Drop -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-8">
+      <div 
+        id="dropZone"
+        class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-10 text-center transition-all cursor-pointer bg-slate-50/50 hover:bg-blue-50/30 flex flex-col items-center justify-center gap-3"
+      >
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+        <div class="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 text-3xl shadow-sm">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
+        <div class="space-y-1">
+          <p class="text-base font-semibold text-slate-800">
+            Arrastra tu archivo aquí o <span class="text-blue-600 underline">haz clic para examinar</span>
+          </p>
+          <p class="text-xs text-slate-500">Formatos soportados: Microsoft Excel (.xlsx, .xls) o CSV (.csv)</p>
+        </div>
+        <div id="fileInfo" class="hidden mt-3 inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 text-sm font-medium">
+          <i class="fa-solid fa-file-excel text-emerald-600 text-lg"></i>
+          <span id="fileName">archivo.xlsx</span>
+          <button id="removeFileBtn" class="text-slate-400 hover:text-red-500 ml-2" title="Quitar archivo">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+        <button 
+          id="btnAnalyze" 
+          disabled
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+          <span>Visualizar Resumen en Pantalla</span>
+        </button>
+
+        <button 
+          id="btnDownloadExcel" 
+          disabled
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="fa-solid fa-file-arrow-down text-lg"></i>
+          <span>Procesar y Descargar Reporte en Excel (.xlsx)</span>
+        </button>
+      </div>
+
+      <!-- Barra de Progreso / Loading -->
+      <div id="loadingBox" class="hidden mt-6 p-4 rounded-xl bg-blue-50 border border-blue-200 flex items-center gap-4">
+        <i class="fa-solid fa-circle-notch fa-spin text-blue-600 text-2xl"></i>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-blue-950">Procesando observaciones con el modelo NLP...</p>
+          <p class="text-xs text-blue-700">Analizando sentimiento y aplicando filtro institucional. Esto toma solo unos segundos.</p>
+        </div>
+      </div>
+
+      <!-- Alertas de Error -->
+      <div id="errorBox" class="hidden mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-start gap-3">
+        <i class="fa-solid fa-circle-exclamation text-red-600 text-lg mt-0.5"></i>
+        <div id="errorText" class="flex-1"></div>
+      </div>
+    </section>
+
+    <!-- Resultados en Pantalla (Dashboard Ejecutivo) -->
+    <section id="resultsSection" class="hidden space-y-6">
+      
+      <!-- Tarjetas de Métricas Globales -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Registros -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Evaluados</p>
+            <p id="metricTotal" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+            <p id="metricExcluidos" class="text-xs text-slate-500 mt-0.5">0 excluidos por filtro</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-users-viewfinder"></i>
+          </div>
+        </div>
+
+        <!-- Positivas -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-200/80 bg-gradient-to-br from-white to-emerald-50/30 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-emerald-800 uppercase tracking-wider">Positivas</p>
+            <p id="metricPositivas" class="text-2xl font-bold text-emerald-700 mt-1">0%</p>
+            <p id="metricPositivasCount" class="text-xs text-emerald-600 mt-0.5">0 observaciones</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-thumbs-up"></i>
+          </div>
+        </div>
+
+        <!-- Por Mejorar -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-200/80 bg-gradient-to-br from-white to-amber-50/30 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-amber-800 uppercase tracking-wider">Por Mejorar</p>
+            <p id="metricPorMejorar" class="text-2xl font-bold text-amber-700 mt-1">0%</p>
+            <p id="metricPorMejorarCount" class="text-xs text-amber-600 mt-0.5">0 observaciones</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+        </div>
+
+        <!-- Sin Observaciones -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Sin Observaciones</p>
+            <p id="metricSinObs" class="text-2xl font-bold text-slate-700 mt-1">0%</p>
+            <p id="metricSinObsCount" class="text-xs text-slate-500 mt-0.5">0 registros</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-comment-slash"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Consolidado por Docente -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+          <h3 class="font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-blue-600"></i>
+            Resumen Consolidado por Docente y Asignatura
+          </h3>
+          <span class="text-xs text-slate-500">Muestra de resultados calculados</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-100/75 text-slate-700 text-xs uppercase font-semibold">
+                <th class="py-3 px-4">Docente</th>
+                <th class="py-3 px-4">Programa</th>
+                <th class="py-3 px-4">Materia</th>
+                <th class="py-3 px-4 text-center">Periodo</th>
+                <th class="py-3 px-4 text-center">Registros</th>
+                <th class="py-3 px-4 text-center">Con Comentario</th>
+                <th class="py-3 px-4 text-center">Sin Comentario</th>
+                <th class="py-3 px-4 text-center text-emerald-700">% Positivo</th>
+                <th class="py-3 px-4 text-center text-amber-700">% Por Mejorar</th>
+                <th class="py-3 px-4 text-center text-slate-600">% Sin Obs</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody" class="divide-y divide-slate-200">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>Sistema de Análisis de Evaluación Docente con Inteligencia Artificial &middot; 2026</p>
+      <a href="/docs" target="_blank" class="text-blue-600 hover:underline inline-flex items-center gap-1">
+        <i class="fa-solid fa-code text-xs"></i>
+        <span>Documentación API (Swagger)</span>
+      </a>
+    </div>
+  </footer>
+
+  <!-- Lógica JavaScript -->
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const btnDownloadExcel = document.getElementById('btnDownloadExcel');
+    const loadingBox = document.getElementById('loadingBox');
+    const errorBox = document.getElementById('errorBox');
+    const errorText = document.getElementById('errorText');
+    const resultsSection = document.getElementById('resultsSection');
+
+    let selectedFile = null;
+
+    // Drag and Drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+      if (e.dataTransfer.files.length) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    removeFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    function handleFileSelect(file) {
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileInfo.classList.remove('hidden');
+      btnAnalyze.disabled = false;
+      btnDownloadExcel.disabled = false;
+      hideError();
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.classList.add('hidden');
+      btnAnalyze.disabled = true;
+      btnDownloadExcel.disabled = true;
+      resultsSection.classList.add('hidden');
+    }
+
+    function showError(msg) {
+      errorText.textContent = msg;
+      errorBox.classList.remove('hidden');
+    }
+
+    function hideError() {
+      errorBox.classList.add('hidden');
+    }
+
+    // Botón: Descargar Excel
+    btnDownloadExcel.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      hideError();
+      loadingBox.classList.remove('hidden');
+      btnDownloadExcel.disabled = true;
+      btnAnalyze.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/api/v1/evaluation/process', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || 'Error procesando el archivo');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Reporte_Evaluacion_Docente_${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        loadingBox.classList.add('hidden');
+        btnDownloadExcel.disabled = false;
+        btnAnalyze.disabled = false;
+      }
+    });
+
+    // Botón: Ver Resumen en Pantalla
+    btnAnalyze.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      hideError();
+      loadingBox.classList.remove('hidden');
+      btnDownloadExcel.disabled = true;
+      btnAnalyze.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/api/v1/evaluation/analyze-json', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || 'Error analizando el archivo');
+        }
+
+        const data = await response.json();
+        renderDashboard(data);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        loadingBox.classList.add('hidden');
+        btnDownloadExcel.disabled = false;
+        btnAnalyze.disabled = false;
+      }
+    });
+
+    function renderDashboard(data) {
+      const m = data.metricas;
+      document.getElementById('metricTotal').textContent = m.total_registros_evaluados;
+      document.getElementById('metricExcluidos').textContent = `${m.total_registros_filtrados_excluidos} excluidos por filtro`;
+
+      document.getElementById('metricPositivas').textContent = `${m.distribucion_global.positivas_pct}%`;
+      document.getElementById('metricPositivasCount').textContent = `${m.distribucion_global.positivas_total} observaciones`;
+
+      document.getElementById('metricPorMejorar').textContent = `${m.distribucion_global.por_mejorar_pct}%`;
+      document.getElementById('metricPorMejorarCount').textContent = `${m.distribucion_global.por_mejorar_total} observaciones`;
+
+      document.getElementById('metricSinObs').textContent = `${m.distribucion_global.sin_observaciones_pct}%`;
+      document.getElementById('metricSinObsCount').textContent = `${m.distribucion_global.sin_observaciones_total} registros`;
+
+      // Renderizar tabla
+      const tbody = document.getElementById('summaryTableBody');
+      tbody.innerHTML = '';
+
+      data.resumen.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition-colors';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-semibold text-slate-800">${item.docente}</td>
+          <td class="py-3 px-4 text-slate-600">${item.programa}</td>
+          <td class="py-3 px-4 text-slate-600">${item.materia}</td>
+          <td class="py-3 px-4 text-center text-slate-500 font-mono text-xs">${item.periodo}</td>
+          <td class="py-3 px-4 text-center font-bold text-slate-800">${item.total_registros}</td>
+          <td class="py-3 px-4 text-center text-blue-700 font-medium">${item.estudiantes_con_comentario}</td>
+          <td class="py-3 px-4 text-center text-slate-500">${item.estudiantes_sin_comentario}</td>
+          <td class="py-3 px-4 text-center font-bold text-emerald-600">${item.pct_positivo.toFixed(1)}%</td>
+          <td class="py-3 px-4 text-center font-bold text-amber-600">${item.pct_por_mejorar.toFixed(1)}%</td>
+          <td class="py-3 px-4 text-center text-slate-500">${item.pct_sin_observaciones.toFixed(1)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      resultsSection.classList.remove('hidden');
+      resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

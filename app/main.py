@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from app.core.config import settings
 from app.api.v1.router import api_router
@@ -44,8 +46,17 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
-@app.get("/", tags=["General"])
+@app.get("/", response_class=HTMLResponse, tags=["General"])
 async def root():
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
+    if os.path.exists(template_path):
+        with open(template_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h2>Portal de Evaluación Docente</h2><p><a href='/docs'>Ver Documentación API</a></p>")
+
+
+@app.get("/api-info", tags=["General"])
+async def api_info():
     return {
         "mensaje": "Bienvenido a la API de Evaluación y Clasificación NLP",
         "documentacion": "/docs",

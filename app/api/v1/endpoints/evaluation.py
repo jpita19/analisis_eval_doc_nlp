@@ -1,7 +1,8 @@
+import os
 import time
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 
 from app.services.report_service import report_service
 from app.services.metrics_service import metrics_service
@@ -14,6 +15,22 @@ from app.schemas.evaluation import (
 )
 
 router = APIRouter()
+
+
+@router.get(
+    "/sample-file",
+    summary="Descargar archivo de ejemplo (.xlsx)",
+    description="Descarga el archivo de ejemplo para pruebas institucionales."
+)
+async def download_sample_file():
+    sample_path = "data/samples/ejemplo_evaluacion.xlsx"
+    if os.path.exists(sample_path):
+        return FileResponse(
+            sample_path,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="ejemplo_evaluacion_docente.xlsx"
+        )
+    raise HTTPException(status_code=404, detail="Archivo de muestra no encontrado")
 
 
 @router.post(
